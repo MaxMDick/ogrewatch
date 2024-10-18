@@ -1,19 +1,31 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
+	[Header("References")]
 	public Rigidbody rb;
 	public GameObject cameraHolder;
-	public float speed, sensitivity, maxForce, jumpForce;
-	private Vector2 move, look;
-	private float lookRotation;
-	public bool grounded;
 
+	[Header("General")]
+	public float speed, sensitivity, maxForce, jumpForce, jumpWaitTime;	
+
+	[Header("Player Inputs")]
+	[SerializeField]
+	private Vector2 look;
+	[SerializeField]
+	private Vector2 move;
+
+	[Header("Status")]
+	[SerializeField]
+	private Vector2 lookRotation;
 	public Vector3 displayVelocityVector;
-	public Vector2 displayMoveVector;
+	public bool grounded;
+	[SerializeField]
+	private float timeGrounded = 0.0f;
 
 	public void OnMove(InputAction.CallbackContext context)
 	{
@@ -32,6 +44,10 @@ public class PlayerController : MonoBehaviour
 
 	public void SetGrounded(bool state)
 	{
+		if (!grounded && state)
+		{
+			timeGrounded = 0.0f;
+		}
 		grounded = state;
 	}
 
@@ -40,12 +56,19 @@ public class PlayerController : MonoBehaviour
 		Cursor.lockState = CursorLockMode.Locked;
 	}
 
+	void Update()
+	{
+		if (grounded)
+		{
+			timeGrounded += Time.deltaTime;
+		}
+	}
+
 	void FixedUpdate()
 	{
 		Move();
 		displayVelocityVector = rb.velocity;
-		displayMoveVector = move;
-		Debug.DrawRay(rb.transform.position, rb.velocity, Color.green, 0.01f);
+		//Debug.DrawRay(rb.transform.position, rb.velocity, Color.green, 0.01f);
 	}
 
 	void LateUpdate()
@@ -63,8 +86,8 @@ public class PlayerController : MonoBehaviour
 			move.y);
 		targetVelocity *= speed;
 
-		// Align direction with player
-		targetVelocity = transform.TransformDirection(targetVelocity);
+		// Align direction with player camera
+		targetVelocity = cameraHolder.transform.TransformDirection(targetVelocity);
 
 		// Calculate force
 		Vector3 velocityChange = (targetVelocity - currentVelocity);
@@ -78,28 +101,26 @@ public class PlayerController : MonoBehaviour
 
 	void Look()
 	{
-		// Turn
-		transform.Rotate(Vector3.up * look.x * sensitivity);
-
-		// Look
-		lookRotation += (-look.y * sensitivity);
-		lookRotation = Mathf.Clamp(lookRotation, -90, 90);
+		lookRotation.x += (look.x * sensitivity);
+		lookRotation.y += (-look.y * sensitivity);
+		lookRotation.y = Mathf.Clamp(lookRotation.y, -90, 90);
 		cameraHolder.transform.eulerAngles = new Vector3(
-			lookRotation, 
-			cameraHolder.transform.eulerAngles.y, 
+			lookRotation.y,
+			lookRotation.x,
 			cameraHolder.transform.eulerAngles.z);
 	}
 
 	void Jump()
 	{
-		if (grounded)
+		//if (grounded && rb.velocity.y >= 0)
+ 
 		{
 			// Trying to fix bug of jump height being reduced
 			// This is because the player is able to jump slightly before landing
 			// And that's because the ground check collision box has to be slightly below the rigidbody
 			//rb.velocity = new Vector3(
 			//	rb.velocity.x, 
-			//	0, 
+			//	0,  
 			//	rb.velocity.z) ;
 			Vector3 jumpForces = Vector3.zero;
 			jumpForces = Vector3.up * jumpForce;
