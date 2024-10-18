@@ -28,7 +28,7 @@ public class PlayerLook : MonoBehaviour
 		Cursor.lockState = CursorLockMode.Locked;
 	}
 
-	void Update()
+	void LateUpdate()
 	{
 		MyInput();
 		cameraHolder.localRotation = Quaternion.Euler(xRotation, yRotation, 0);
