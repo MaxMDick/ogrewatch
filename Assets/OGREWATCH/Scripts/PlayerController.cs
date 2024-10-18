@@ -113,7 +113,7 @@ public class PlayerController : MonoBehaviour
 	void Jump()
 	{
 		//if (grounded && rb.velocity.y >= 0)
- 
+		if (grounded && timeGrounded >= jumpWaitTime)
 		{
 			// Trying to fix bug of jump height being reduced
 			// This is because the player is able to jump slightly before landing
