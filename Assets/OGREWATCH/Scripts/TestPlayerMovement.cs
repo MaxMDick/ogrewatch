@@ -32,7 +32,6 @@ public class TestMyPlayerMovement : MonoBehaviour
 	[Header("Drag")] // Drag applied when player is not inputting any movements
 	public float groundDrag;
 	public float airDrag;
-	public float groundStop;
 	[Header("Jump")]
 	public float jumpForce;
 	[Header("Other")]
@@ -45,12 +44,9 @@ public class TestMyPlayerMovement : MonoBehaviour
 
 	public Vector3 current;
 	public Vector3 target;
-
 	public Vector3 correcting;
-	public Vector3 drag;
-	public Vector3 realDrag;
 
-	public float dotProduct;
+	public float cortarDot;
 	public float currentSpeed;
 
 	public void OnLook(InputAction.CallbackContext context)
@@ -79,17 +75,14 @@ public class TestMyPlayerMovement : MonoBehaviour
 		isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight / 2 + 0.1f);
 
 
+		currentSpeed = rb.velocity.magnitude;
 
-
-		Vector3 aboveCube = transform.position + new Vector3(0, 1, 0);
 		float rayScale = 1f;
-
+		Vector3 aboveCube = transform.position + new Vector3(0, 1, 0);
+		
 		Debug.DrawRay(aboveCube, current * rayScale, Color.red);
 		Debug.DrawRay(aboveCube, target * rayScale, Color.green);
 		Debug.DrawRay(aboveCube, correcting * rayScale, Color.blue);
-		//Debug.DrawRay(current, current + target, Color.yellow);
-		Debug.DrawRay(aboveCube, drag * rayScale, Color.gray);
-		Debug.DrawRay(aboveCube, realDrag * rayScale, Color.black);
 	}
 
 	void FixedUpdate()
@@ -104,52 +97,49 @@ public class TestMyPlayerMovement : MonoBehaviour
 
 	private void Move()
 	{
-
 		current = rb.velocity;
+		current = new Vector3(current.x, 0, current.z);
 
 		target = new Vector3(move.x, 0, move.y);
-		target = orientation.TransformDirection(target).normalized;
-
-
-		drag = new Vector3(move.y, 0, -move.x);
-		drag = orientation.TransformDirection(drag).normalized;
-
-
+		target = orientation.TransformDirection(target);
 		target = new Vector3(target.x, 0, target.z);
-		target *= maxGroundSpeed;
-
-		dotProduct = Vector3.Dot(current.normalized, target.normalized);
-		correcting = target - current;
-
-
-		if (Vector3.Dot(current, drag) > 0)
+		if (isGrounded)
 		{
-			realDrag = -drag;
+			target *= maxGroundSpeed;
 		}
 		else
 		{
-			realDrag = drag;
+			target *= maxAirSpeed;
 		}
+		
 
-		if (Vector3.Dot(current, drag) == 0)
+		correcting = target - current;
+		cortarDot = Vector3.Dot(correcting, target);
+
+		if (cortarDot > 0) // Player has input, but not yet up to target velocity
 		{
-			realDrag = Vector3.zero;
+			if (isGrounded)
+			{
+				correcting *= groundAccel;
+			}
+			else
+			{
+				correcting *= airAccel;
+			}
 		}
-
-		if (target == Vector3.zero && current.magnitude < 1f)
+		else if (cortarDot == 0) // Player has no input
 		{
-			correcting = Vector3.zero;
+			if (isGrounded)
+			{
+				correcting *= groundDrag;
+			}
+			else
+			{
+				correcting *= airDrag;
+			}
 		}
 
-
-		if (dotProduct < 1)
-		{
-			rb.AddForce(groundAccel * Time.fixedDeltaTime * correcting.normalized, ForceMode.VelocityChange);
-			rb.AddForce(groundDrag * Time.fixedDeltaTime * realDrag.normalized, ForceMode.VelocityChange);
-		}
-
-		currentSpeed = rb.velocity.magnitude;
-
+		rb.AddForce(Time.fixedDeltaTime * correcting, ForceMode.VelocityChange);
 	}
 
 	private void Look()

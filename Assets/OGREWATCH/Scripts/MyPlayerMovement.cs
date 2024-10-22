@@ -7,7 +7,6 @@ public class MyPlayerMovement : MonoBehaviour
 {
 	[Header("References")]
 	private Rigidbody rb;
-	public Transform cameraHolder;
 	public Transform orientation;
 
 	[Header("Max Speed")]
@@ -19,11 +18,10 @@ public class MyPlayerMovement : MonoBehaviour
 	[Header("Drag")] // Drag applied when player is not inputting any movements
 	public float groundDrag;
 	public float airDrag;
-	public float groundStop;
 	[Header("Jump")]
 	public float jumpForce;
 	[Header("Other")]
-	public float maxForce = 100f;
+	public float abilityForce;
 	public float playerHeight = 2f;
 	public bool isGrounded;
 
@@ -32,11 +30,9 @@ public class MyPlayerMovement : MonoBehaviour
 
 	public Vector3 current;
 	public Vector3 target;
-	
 	public Vector3 correcting;
-	public Vector3 drag;
 
-	public float dotProduct;
+	public float cortarDot;
 	public float currentSpeed;
 
 
@@ -50,15 +46,30 @@ public class MyPlayerMovement : MonoBehaviour
 		Jump();
 	}
 
+	public void OnAbility1(InputAction.CallbackContext context)
+	{
+		Ability1();
+	}
+
 	void Start()
 	{
 		rb = GetComponent<Rigidbody>();
-		//rb.AddForce(cameraHolder.forward * 10f, ForceMode.Impulse);
 	}
 
 	void Update()
 	{
 		isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight / 2 + 0.1f);
+
+
+
+		currentSpeed = rb.velocity.magnitude;
+
+		//float rayScale = 1f;
+		//Vector3 aboveCube = transform.position + new Vector3(0, 1, 0);
+
+		//Debug.DrawRay(aboveCube, current * rayScale, Color.red);
+		//Debug.DrawRay(aboveCube, target * rayScale, Color.green);
+		//Debug.DrawRay(aboveCube, correcting * rayScale, Color.blue);
 	}
 
 	void FixedUpdate()
@@ -68,96 +79,49 @@ public class MyPlayerMovement : MonoBehaviour
 
 	private void Move()
 	{
-		//// Find target velocity
-		//currentVelocity = rb.velocity;
-		//targetVelocity = new Vector3(move.x, 0, move.y);
-		//targetVelocity *= groundAccel;
-
-		//// Align direction with player camera
-		//targetVelocity = cameraHolder.TransformDirection(targetVelocity);
-
-		//// Calculate force
-		//Vector3 velocityChange = (targetVelocity - currentVelocity);
-		//// Limits force applied to only horizontal plane
-		//velocityChange = new Vector3(velocityChange.x, 0, velocityChange.z); 
-		//// Limit force value
-		//Vector3.ClampMagnitude(velocityChange, maxForce);
-
-		//rb.AddForce(velocityChange, ForceMode.VelocityChange);
-
-
-
-
-
-
-
-
-
-
-
-
-		// If your going fast in one direction, forward input in that direction should not slow you down
-		// I can't just change the drag attribute on the rigidbody, because I don't want airdrag to affect jump height (I want jump height to scale linearly with jump force for every class which can't be done if they have different drag values)
-
-
-
-
-
-
-
-		//currentVelocity = rb.velocity;
-		//currentSpeed = currentVelocity.magnitude;
-
-		//targetVelocity = new Vector3(move.x, 0, move.y);
-		//targetVelocity *= maxGroundSpeed;
-		//targetSpeed = targetVelocity.magnitude;
-
-		//targetVelocity = cameraHolder.TransformDirection(targetVelocity);
-
-		//velocityChange = (targetVelocity - currentVelocity);
-		//velocityChange = new Vector3(velocityChange.x, 0, velocityChange.z);
-
-		//if (move == Vector2.zero) // No Player input
-		//{
-		//	velocityChange *= (groundDrag * Time.fixedDeltaTime);
-		//}
-		//else
-		//{
-		//	velocityChange *= (groundAccel * Time.fixedDeltaTime);
-		//}
-
-		//rb.AddForce(velocityChange, ForceMode.VelocityChange);
-
-
-
 		current = rb.velocity;
+		current = new Vector3(current.x, 0, current.z);
 
 		target = new Vector3(move.x, 0, move.y);
 		target = orientation.TransformDirection(target);
-
-
-		target = target.normalized;
-
-
 		target = new Vector3(target.x, 0, target.z);
-		target *= maxGroundSpeed;
-
-		dotProduct = Vector3.Dot(current, target);
-		correcting = target - current;
-
-		drag = current - (Vector3.Dot(current, target) / target.magnitude) * target;
-		drag = -drag;
-		
-
-
-		if (dotProduct < maxGroundSpeed * maxGroundSpeed)
+		if (isGrounded)
 		{
-			rb.AddForce(groundAccel * Time.fixedDeltaTime * correcting.normalized, ForceMode.VelocityChange);
-			rb.AddForce(groundDrag * Time.fixedDeltaTime * drag.normalized, ForceMode.VelocityChange);
+			target *= maxGroundSpeed;
+		}
+		else
+		{
+			target *= maxAirSpeed;
 		}
 
-		currentSpeed = rb.velocity.magnitude;
 
+		correcting = target - current;
+		cortarDot = Vector3.Dot(correcting, target);
+
+		if (cortarDot > 0) // Player has input, but not yet up to target velocity
+		{
+			if (isGrounded)
+			{
+				correcting *= groundAccel;
+			}
+			else
+			{
+				correcting *= airAccel;
+			}
+		}
+		else if (cortarDot == 0) // Player has no input
+		{
+			if (isGrounded)
+			{
+				correcting *= groundDrag;
+			}
+			else
+			{
+				correcting *= airDrag;
+			}
+		}
+
+		rb.AddForce(Time.fixedDeltaTime * correcting, ForceMode.VelocityChange);
 	}
 
 	private void Jump()
@@ -166,5 +130,12 @@ public class MyPlayerMovement : MonoBehaviour
 		{
 			rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
 		}
+	}
+
+	private void Ability1()
+	{
+		Vector3 abilityTarget = new Vector3(move.x, 0, move.y);
+		abilityTarget = orientation.TransformDirection(abilityTarget);
+		rb.AddForce(abilityForce * abilityTarget, ForceMode.Impulse);
 	}
 }
