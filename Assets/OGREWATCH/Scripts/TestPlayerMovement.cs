@@ -48,6 +48,7 @@ public class TestMyPlayerMovement : MonoBehaviour
 
 	public Vector3 correcting;
 	public Vector3 drag;
+	public Vector3 realDrag;
 
 	public float dotProduct;
 	public float currentSpeed;
@@ -81,12 +82,14 @@ public class TestMyPlayerMovement : MonoBehaviour
 
 
 		Vector3 aboveCube = transform.position + new Vector3(0, 1, 0);
-		float rayScale = 0.15f;
+		float rayScale = 1f;
 
 		Debug.DrawRay(aboveCube, current * rayScale, Color.red);
 		Debug.DrawRay(aboveCube, target * rayScale, Color.green);
 		Debug.DrawRay(aboveCube, correcting * rayScale, Color.blue);
+		//Debug.DrawRay(current, current + target, Color.yellow);
 		Debug.DrawRay(aboveCube, drag * rayScale, Color.gray);
+		Debug.DrawRay(aboveCube, realDrag * rayScale, Color.black);
 	}
 
 	void FixedUpdate()
@@ -105,27 +108,44 @@ public class TestMyPlayerMovement : MonoBehaviour
 		current = rb.velocity;
 
 		target = new Vector3(move.x, 0, move.y);
-		target = orientation.TransformDirection(target);
+		target = orientation.TransformDirection(target).normalized;
 
 
-		target = target.normalized;
+		drag = new Vector3(move.y, 0, -move.x);
+		drag = orientation.TransformDirection(drag).normalized;
 
 
 		target = new Vector3(target.x, 0, target.z);
 		target *= maxGroundSpeed;
 
-		dotProduct = Vector3.Dot(current, target);
+		dotProduct = Vector3.Dot(current.normalized, target.normalized);
 		correcting = target - current;
 
-		drag = current - (Vector3.Dot(current, target) / target.magnitude) * target;
-		drag = -drag;
+
+		if (Vector3.Dot(current, drag) > 0)
+		{
+			realDrag = -drag;
+		}
+		else
+		{
+			realDrag = drag;
+		}
+
+		if (Vector3.Dot(current, drag) == 0)
+		{
+			realDrag = Vector3.zero;
+		}
+
+		if (target == Vector3.zero && current.magnitude < 1f)
+		{
+			correcting = Vector3.zero;
+		}
 
 
-
-		if (dotProduct < maxGroundSpeed * maxGroundSpeed)
+		if (dotProduct < 1)
 		{
 			rb.AddForce(groundAccel * Time.fixedDeltaTime * correcting.normalized, ForceMode.VelocityChange);
-			rb.AddForce(groundDrag * Time.fixedDeltaTime * drag.normalized, ForceMode.VelocityChange);
+			rb.AddForce(groundDrag * Time.fixedDeltaTime * realDrag.normalized, ForceMode.VelocityChange);
 		}
 
 		currentSpeed = rb.velocity.magnitude;
