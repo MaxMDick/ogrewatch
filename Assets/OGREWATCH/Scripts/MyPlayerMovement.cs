@@ -37,12 +37,11 @@ public class MyPlayerMovement : MonoBehaviour
 	public float slopeCheckDistance = 0.05f;
 	public float maxSlopeAngle;
 	public float slopeEscapeSpeed;
-	public float coyoteTimePeriod = 0.2f;
-	public float recentlyJumpedPeriod = 0.1f;
+	public float coyoteTimePeriod = 0.1f;
+	public float recentlyJumpedPeriod = 0.2f; // Must be longer than coyoteTimePeriod
 	RaycastHit slopeCheckHit = new();
 	float lastGroundedAtTime;
 	float lastJumpedAtTime;
-	public bool alreadyJumped;
 
 	[Header("Jump")]
 	public float jumpForce;
@@ -92,15 +91,6 @@ public class MyPlayerMovement : MonoBehaviour
 		rb.useGravity = false;
 	}
 
-	void Update()
-	{
-		//float rayScale = 1f;
-		//Vector3 aboveCube = transform.position + new Vector3(0, 1, 0);
-		//Debug.DrawRay(aboveCube, current * rayScale, Color.red);
-		//Debug.DrawRay(aboveCube, target * rayScale, Color.green);
-		//Debug.DrawRay(aboveCube, correcting * rayScale, Color.blue);
-	}
-
 	void FixedUpdate()
 	{
 		bool wasGrounded = isGrounded;
@@ -143,46 +133,24 @@ public class MyPlayerMovement : MonoBehaviour
 		return Vector3.Angle(Vector3.up, slopeCheckHit.normal);
 	}
 
-	private bool IsSlopeTraversable() 
+	private bool IsSlopeTraversable()
 	{
-		// Bug: Might want to change this eventually to not take into account rb velocity & slopeEscapeSpeed if this is to be used for checking if abilities can be used
-		if (slopeAngle <= maxSlopeAngle)
-		{
-			return true;
-		}
-		return false;
+		return slopeAngle <= maxSlopeAngle;
 	}
 
 	private bool IsOnGround()
 	{
-		if (isGrounded)
-		{
-			return true;
-		}
-		return false;
+		return isGrounded;
 	}
 
 	private bool IsInCoyoteTime()
 	{
-		if (Time.time < lastGroundedAtTime + coyoteTimePeriod)
-		{
-			return true;
-		}
-		return false;
+		return !RecentlyJumped() && Time.time < lastGroundedAtTime + coyoteTimePeriod;
 	}
 
 	private bool RecentlyJumped()
 	{
-		if (Time.time < lastJumpedAtTime + recentlyJumpedPeriod)
-		{
-			return true;
-		}
-		return false;
-	}
-
-	private bool UpdateJumpAllowance()
-	{
-		return false;
+		return Time.time < lastJumpedAtTime + recentlyJumpedPeriod;
 	}
 
 	private void Move()
