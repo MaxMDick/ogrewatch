@@ -1,9 +1,12 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Threading;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Random = UnityEngine.Random;
 
 public class MyPlayerMovement : MonoBehaviour
 {
@@ -11,11 +14,16 @@ public class MyPlayerMovement : MonoBehaviour
 	private Rigidbody rb;
 	private CapsuleCollider cc;
 	public Transform orientation;
+	public MyPlayerStatus myPlayerStatus;
+	public Animator animator;
 
 	[Header("Ground Movement")]
 	public float maxGroundSpeed;
 	public float groundAccel;
 	public float groundDrag;
+	public float forwardSpeed;
+	public float sideSpeed;
+	public float backSpeed;
 
 	[Header("Air Movement")]
 	public float maxAirSpeed;
@@ -37,8 +45,8 @@ public class MyPlayerMovement : MonoBehaviour
 	public float slopeCheckDistance = 0.05f;
 	public float maxSlopeAngle;
 	public float slopeEscapeSpeed;
-	public float coyoteTimePeriod = 0.1f;
 	public float recentlyJumpedPeriod = 0.2f; // Must be longer than coyoteTimePeriod
+	public float coyoteTimePeriod = 0.1f;
 	RaycastHit slopeCheckHit = new();
 	float lastGroundedAtTime;
 	float lastJumpedAtTime;
@@ -64,10 +72,14 @@ public class MyPlayerMovement : MonoBehaviour
 	
 	// For display only
 	public float currentSpeed;
+	public Vector3 currentVelocity;
 	public bool coyoteTime;
 	public bool recentlyJumped;
 
-	
+	public bool landedThisFrame;
+
+	public float forwardDiagonalSpeed;
+	public float backDiagonalSpeed;
 
 	public void OnMove(InputAction.CallbackContext context)
 	{
@@ -88,16 +100,44 @@ public class MyPlayerMovement : MonoBehaviour
 	{
 		rb = GetComponent<Rigidbody>();
 		cc = GetComponent<CapsuleCollider>();
+		myPlayerStatus = GetComponent<MyPlayerStatus>();
 		rb.useGravity = false;
+
+		float x, y;
+		// angleRadians = Math.Atan(sideSpeed / forwardSpeed);
+		// Debug.Log(angleRadians);
+		// x = sideSpeed * (float)Math.Cos(angleRadians); // or forwardSpeed * sin
+		// diagonalForwardSpeed = new Vector2(x, x).magnitude;
+		x = sideSpeed * (float)Math.Cos(Math.PI / 4);
+		y = forwardSpeed * (float)Math.Sin(Math.PI / 4);
+		// Debug.Log(x);
+		// Debug.Log(y);
+		forwardDiagonalSpeed = new Vector2(x, y).magnitude;
+		
+		x = sideSpeed * (float)Math.Cos(Math.PI / 4);
+		y = backSpeed * (float)Math.Sin(Math.PI / 4);
+		// Debug.Log(x);
+		// Debug.Log(y);
+		backDiagonalSpeed = new Vector2(x, y).magnitude;
+	}
+
+	void Update()
+	{
+		UpdateAnimator();
 	}
 
 	void FixedUpdate()
 	{
+		landedThisFrame = false;
 		bool wasGrounded = isGrounded;
 		isGrounded = GroundDetection();
 		if (wasGrounded && !isGrounded)
 		{
 			lastGroundedAtTime = Time.time;
+		}
+		else if (!wasGrounded && isGrounded)
+		{
+			landedThisFrame = true;
 		}
 
 		slopeAngle = SlopeDetection();
@@ -106,6 +146,7 @@ public class MyPlayerMovement : MonoBehaviour
 		{
 			TryJump();
 		}
+		TrySnapToPlane();
 		Move();
 		ApplyGravity();
 
@@ -113,6 +154,7 @@ public class MyPlayerMovement : MonoBehaviour
 
 		// For display
 		currentSpeed = rb.velocity.magnitude;
+		currentVelocity = rb.velocity;
 		coyoteTime = IsInCoyoteTime();
 		recentlyJumped = RecentlyJumped();
 	}
@@ -153,24 +195,134 @@ public class MyPlayerMovement : MonoBehaviour
 		return Time.time < lastJumpedAtTime + recentlyJumpedPeriod;
 	}
 
+	private Vector3 ProcessStatusEffects(Vector3 vector)
+	{
+		if (myPlayerStatus.IsStunned())
+		{
+			vector = Vector3.zero;
+		}
+		else if (myPlayerStatus.IsRooted())
+		{
+			vector = Vector3.zero;
+		}
+		else if (myPlayerStatus.IsSlowed())
+		{
+			vector *= myPlayerStatus.GetEffectiveSlowMultiplier();
+		}
+		return vector;
+	}
+
 	private void Move()
 	{
-		// Align current velocity along slope
-		if (IsOnGround() && IsSlopeTraversable() && !RecentlyJumped()  && rb.velocity.magnitude <= slopeEscapeSpeed)
-		{
-			rb.velocity = AlignWithPlaneSetSpeed(rb.velocity, groundCheckHit.normal, rb.velocity.magnitude);
-		}
-		// if (IsOnGround() && IsSlopeTraversable() && !RecentlyJumped())
-		// {
-		// 	rb.MovePosition(Vector3.down * groundCheckHit.distance);
-		// }
-		
 		current = rb.velocity;
-		target = new Vector3(move.x, 0, move.y);
+		target = new Vector3(move.x, 0, move.y); // Already normalized
 		target = orientation.TransformDirection(target);
+
+		
+		// if (move.y > 0)
+		// {
+		// 	if (move.x > 0)
+		// 	{
+		// 		Debug.Log("Forward Right");
+		// 	}
+		// 	else if (move.x < 0)
+		// 	{
+		// 		Debug.Log("Forward Left");
+		// 	}
+		// 	else
+		// 	{
+		// 		Debug.Log("Forward");
+		// 	}
+		// }
+		// else if (move.y < 0)
+		// {
+		// 	if (move.x > 0)
+		// 	{
+		// 		Debug.Log("Back Right");
+		// 	}
+		// 	else if (move.x < 0)
+		// 	{
+		// 		Debug.Log("Back Left");
+		// 	}
+		// 	else
+		// 	{
+		// 		Debug.Log("Back");
+		// 	}
+		// }
+		// else
+		// {
+		// 	if (move.x > 0)
+		// 	{
+		// 		Debug.Log("Right");
+		// 	}
+		// 	else if (move.x < 0)
+		// 	{
+		// 		Debug.Log("Left");
+		// 	}
+		// 	else
+		// 	{
+		// 		Debug.Log("Stationary");
+		// 	}
+		// }
+
+
 		if (IsOnGround()) 
 		{
-			target = AlignWithPlaneSetSpeed(target, groundCheckHit.normal, maxGroundSpeed);
+			// target = AlignWithPlaneSetSpeed(target, groundCheckHit.normal, maxGroundSpeed);
+			target = AlignWithPlaneSetSpeed(target, groundCheckHit.normal, 1f);
+			if (move.y > 0)
+			{
+				if (move.x > 0)
+				{
+					// Debug.Log("Forward Right");
+					target *= forwardDiagonalSpeed;
+				}
+				else if (move.x < 0)
+				{
+					// Debug.Log("Forward Left");
+					target *= forwardDiagonalSpeed;
+				}
+				else
+				{
+					// Debug.Log("Forward");
+					target *= forwardSpeed;
+				}
+			}
+			else if (move.y < 0)
+			{
+				if (move.x > 0)
+				{
+					// Debug.Log("Back Right");
+					target *= backDiagonalSpeed;
+				}
+				else if (move.x < 0)
+				{
+					// Debug.Log("Back Left");
+					target *= backDiagonalSpeed;
+				}
+				else
+				{
+					// Debug.Log("Back");
+					target *= backSpeed;
+				}
+			}
+			else
+			{
+				if (move.x > 0)
+				{
+					// Debug.Log("Right");
+					target *= sideSpeed;
+				}
+				else if (move.x < 0)
+				{
+					// Debug.Log("Left");
+					target *= sideSpeed;
+				}
+				else
+				{
+					// Debug.Log("Stationary");
+				}
+			}
 		}
 		else
 		{
@@ -179,7 +331,7 @@ public class MyPlayerMovement : MonoBehaviour
 			target *= maxAirSpeed;
 		}
 
-		
+		target = ProcessStatusEffects(target);
 		correcting = target - current;
 		cortarDot = Vector3.Dot(correcting, target); // >0 if player has input but not yet up to target velocity, ==0 if player has no input
 
@@ -196,7 +348,6 @@ public class MyPlayerMovement : MonoBehaviour
 
 			// Bug: Jumping in place sends player in a direction along the plane
 			correcting = AlignWithPlaneSetSpeed(correcting, groundCheckHit.normal, correcting.magnitude);
-			// rb.useGravity = false;
 		}
 		else
 		{
@@ -210,11 +361,36 @@ public class MyPlayerMovement : MonoBehaviour
 			}
 
 			correcting = new Vector3(correcting.x, 0, correcting.z);
-			// rb.useGravity = true;
 		}
 
 		// Apply Force
 		rb.AddForce(Time.fixedDeltaTime * correcting, ForceMode.VelocityChange);
+	}
+
+	private void TrySnapToPlane()
+	{
+		// Align current velocity along slope
+		if (IsOnGround() && IsSlopeTraversable() && !RecentlyJumped()  && rb.velocity.magnitude <= slopeEscapeSpeed)
+		{
+			rb.velocity = AlignWithPlaneSetSpeed(rb.velocity, groundCheckHit.normal, rb.velocity.magnitude);
+			
+			
+			// WIP
+			// if (landedThisFrame && Vector3.Dot(slopeCheckHit.normal.normalized, Vector3.up) >= 1)
+			// {
+			// 	Debug.Log("Landed");
+			// 	rb.velocity = AlignWithPlaneSetSpeed(new Vector3(rb.velocity.x, 0, rb.velocity.z), groundCheckHit.normal, rb.velocity.magnitude);
+			// }
+			// else
+			// {
+			// 	rb.velocity = AlignWithPlaneSetSpeed(rb.velocity, groundCheckHit.normal, rb.velocity.magnitude);
+			// }
+			
+		}
+		// if (IsOnGround() && IsSlopeTraversable() && !RecentlyJumped())
+		// {
+		// 	rb.MovePosition(Vector3.down * groundCheckHit.distance);
+		// }
 	}
 
 	private void ApplyGravity()
@@ -234,6 +410,11 @@ public class MyPlayerMovement : MonoBehaviour
 		}
 	}
 
+	private void UpdateAnimator()
+	{
+		animator.SetFloat("Speed", rb.velocity.magnitude);
+	}
+
 	private Vector3 AlignWithPlaneSetSpeed(Vector3 vector, Vector3 planeNormal, float speed)
 	{
 		// Bug: Magnitude of returned vector is sometimes less than the input
@@ -242,6 +423,8 @@ public class MyPlayerMovement : MonoBehaviour
 
 	private void TryJump()
 	{
+		if (myPlayerStatus.IsStunned() || myPlayerStatus.IsRooted()) return;
+		
 		// Bug: Holding jump applies the force multiple times and causes you to jump slightly higher
 		if ((IsOnGround() || IsInCoyoteTime()) && IsSlopeTraversable() && !RecentlyJumped())
 		{
@@ -263,8 +446,10 @@ public class MyPlayerMovement : MonoBehaviour
 		{
 			abilityTarget = new Vector3(move.x, 0, move.y);
 		}
-
+		
 		abilityTarget = orientation.TransformDirection(abilityTarget);
 		rb.AddForce(abilityForce * abilityTarget, ForceMode.Impulse);
+		
+		// myPlayerStatus.ApplySlow(Random.Range(5, 10), Random.Range(0f, 1f));
 	}
 }

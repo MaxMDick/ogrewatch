@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!319 &31900000
+AvatarMask:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Upper Body Mask
+  m_Mask: 00000000010000000100000000000000000000000100000001000000010000000100000000000000000000000000000000000000
+  m_Elements:
+  - m_Path: 
+    m_Weight: 1
+  - m_Path: Armature
+    m_Weight: 1
+  - m_Path: Armature/Root
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Head
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Upper Arm.L
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Upper Arm.L/Lower Arm.L
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Upper Arm.L/Lower Arm.L/Hand.L
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Upper Arm.R
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Upper Arm.R/Lower Arm.R
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Upper Arm.R/Lower Arm.R/Hand.R
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Spine/Upper Arm.R/Lower Arm.R/Hand.R/Holder.R
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Upper Leg.L
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Upper Leg.L/Lower Leg.L
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Upper Leg.L/Lower Leg.L/Foot.L
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Upper Leg.R
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Upper Leg.R/Lower Leg.R
+    m_Weight: 1
+  - m_Path: Armature/Root/Hip/Upper Leg.R/Lower Leg.R/Foot.R
+    m_Weight: 1
+  - m_Path: Body Mesh Object
+    m_Weight: 1

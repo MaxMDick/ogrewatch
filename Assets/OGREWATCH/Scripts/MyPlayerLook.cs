@@ -10,6 +10,8 @@ public class MyPlayerLook : MonoBehaviour
 	Transform cameraHolder;
 	[SerializeField]
 	Transform orientation;
+	[SerializeField]
+	MyPlayerStatus myPlayerStatus;
 
 	[Header("Sensitivity")]
 	[SerializeField]
@@ -17,7 +19,7 @@ public class MyPlayerLook : MonoBehaviour
 	[SerializeField]
 	private float sensY;
 
-	private Vector2 look;
+	private Vector2 m_look;
 	private Vector2 lookRotation;
 
 	[SerializeField]
@@ -26,12 +28,13 @@ public class MyPlayerLook : MonoBehaviour
 
 	public void OnLook(InputAction.CallbackContext context)
 	{
-		look = context.ReadValue<Vector2>();
+		m_look = context.ReadValue<Vector2>();
 	}
 
 	void Start()
 	{
 		Cursor.lockState = CursorLockMode.Locked;
+		myPlayerStatus = GetComponent<MyPlayerStatus>();
 	}
 
 	void LateUpdate()
@@ -39,8 +42,19 @@ public class MyPlayerLook : MonoBehaviour
 		Look();
 	}
 
+	private Vector2 ProcessStatusEffects(Vector2 vector)
+	{
+		if (myPlayerStatus.IsStunned())
+		{
+			vector = new Vector2(0f, vector.y);
+		}
+
+		return vector;
+	}
+
 	private void Look()
 	{
+		Vector2 look = ProcessStatusEffects(m_look);
 		lookRotation.y += (look.x * sensX * multiplier);
 		lookRotation.x += (-look.y * sensY * multiplier);
 		lookRotation.x = Mathf.Clamp(lookRotation.x, -90, 90);
