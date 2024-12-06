@@ -16,9 +16,10 @@ public class MyPlayerMovement : MonoBehaviour
 	public Transform orientation;
 	public MyPlayerStatus myPlayerStatus;
 	public Animator animator;
+	public MoveCamera moveCamera;
 
 	[Header("Ground Movement")]
-	public float maxGroundSpeed;
+	// public float maxGroundSpeed;
 	public float groundAccel;
 	public float groundDrag;
 	public float forwardSpeed;
@@ -437,19 +438,34 @@ public class MyPlayerMovement : MonoBehaviour
 
 	private void Ability1()
 	{
-		Vector3 abilityTarget;
-		if (move == Vector2.zero)
-		{
-			abilityTarget = Vector3.up * 0.5f;
-		}
-		else
-		{
-			abilityTarget = new Vector3(move.x, 0, move.y);
-		}
+		// Vector3 abilityTarget;
+		// if (move == Vector2.zero)
+		// {
+		// 	abilityTarget = Vector3.up * 0.5f;
+		// }
+		// else
+		// {
+		// 	abilityTarget = new Vector3(move.x, 0, move.y);
+		// }
+		//
+		// abilityTarget = orientation.TransformDirection(abilityTarget);
+		// rb.AddForce(abilityForce * abilityTarget, ForceMode.Impulse);
 		
-		abilityTarget = orientation.TransformDirection(abilityTarget);
-		rb.AddForce(abilityForce * abilityTarget, ForceMode.Impulse);
+		
+		
+		
+		
+		
+		
+		
 		
 		// myPlayerStatus.ApplySlow(Random.Range(5, 10), Random.Range(0f, 1f));
+		
+		
+		
+		
+		
+		
+		moveCamera.CameraShake();
 	}
 }

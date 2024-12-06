@@ -58,7 +58,7 @@ public class MyPlayerLook : MonoBehaviour
 		lookRotation.y += (look.x * sensX * multiplier);
 		lookRotation.x += (-look.y * sensY * multiplier);
 		lookRotation.x = Mathf.Clamp(lookRotation.x, -90, 90);
-		cameraHolder.localRotation = Quaternion.Euler(lookRotation.x, lookRotation.y, 0);
+		cameraHolder.localRotation = Quaternion.Euler(lookRotation.x, lookRotation.y, cameraHolder.localRotation.eulerAngles.z);
 		orientation.rotation = Quaternion.Euler(0, lookRotation.y, 0);
 	}
 }
