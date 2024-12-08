@@ -3,15 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class MyPlayerLook : MonoBehaviour
+public class MyPlayerLookAirTest : MonoBehaviour
 {
 	[Header("References")]
-	[SerializeField]
-	Transform cameraHolder;
+	// [SerializeField]
+	// Transform cameraHolder;
 	[SerializeField]
 	Transform orientation;
-	// [SerializeField]
-	// MyPlayerStatus myPlayerStatus;
 
 	[Header("Sensitivity")]
 	[SerializeField]
@@ -32,6 +30,8 @@ public class MyPlayerLook : MonoBehaviour
 	public Transform spineToRotate;
 	public float maxLookUpAngle;
 	public float maxLookDownAngle;
+	public Transform hipToRotate;
+	public MyPlayerMovement myPlayerMovement;
 
 	public void OnLook(InputAction.CallbackContext context)
 	{
@@ -41,7 +41,6 @@ public class MyPlayerLook : MonoBehaviour
 	void Start()
 	{
 		Cursor.lockState = CursorLockMode.Locked;
-		// myPlayerStatus = GetComponent<MyPlayerStatus>();
 	}
 
 	void LateUpdate()
@@ -67,14 +66,15 @@ public class MyPlayerLook : MonoBehaviour
 		lookRotation.x = Mathf.Clamp(lookRotation.x, -maxLookUpAngle, maxLookDownAngle);
 		orientation.rotation = Quaternion.Euler(0, lookRotation.y, 0);
 
-		
-		if (spineToRotate)
+		if (myPlayerMovement.isGrounded)
 		{
-			spineToRotate.localEulerAngles = new Vector3(lookRotation.x, spineToRotate.localRotation.y, spineToRotate.localRotation.z);
+			spineToRotate.localEulerAngles = new Vector3(lookRotation.x, spineToRotate.localRotation.y, spineToRotate.localEulerAngles.z);
+			hipToRotate.localEulerAngles = new Vector3(-90, hipToRotate.localEulerAngles.y, hipToRotate.localEulerAngles.z);
 		}
 		else
 		{
-			// cameraHolder.localRotation = Quaternion.Euler(lookRotation.x, lookRotation.y, cameraHolder.localRotation.eulerAngles.z);
+			spineToRotate.localEulerAngles = new Vector3(0, spineToRotate.localRotation.y, spineToRotate.localEulerAngles.z);
+			hipToRotate.localEulerAngles = new Vector3(lookRotation.x - 90, hipToRotate.localEulerAngles.y, hipToRotate.localEulerAngles.z);
 		}
 	}
 }
