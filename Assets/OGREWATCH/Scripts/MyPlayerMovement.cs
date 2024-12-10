@@ -16,7 +16,7 @@ public class MyPlayerMovement : MonoBehaviour
 	public Transform orientation;
 	public MyPlayerStatus myPlayerStatus;
 	public Animator animator;
-	public MoveCamera moveCamera;
+	public CameraEffects cameraEffects;
 
 	[Header("Ground Movement")]
 	// public float maxGroundSpeed;
@@ -466,6 +466,6 @@ public class MyPlayerMovement : MonoBehaviour
 		
 		
 		
-		moveCamera.CameraShake();
+		cameraEffects.CameraShake();
 	}
 }

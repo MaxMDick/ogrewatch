@@ -51,6 +51,14 @@ public class PlayerCombat : MonoBehaviour
 		}
 		mouseHeld = context.ReadValueAsButton();
 	}
+
+	public void OnAttack(bool value) // For triggering from another script instead of InputAction
+	{
+		if (value)
+		{
+			TryAttack();
+		}
+	}
 	
 	void Start()
 	{
@@ -77,12 +85,16 @@ public class PlayerCombat : MonoBehaviour
 					// Color col = Color.Lerp(Color.white, Color.red, (float)i) / currentTracerPositions.Count;
 					Debug.DrawLine(lastTracerPositions[i], currentTracerPositions[i], Color.red, tracerDuration);
 					
-					// Physics.Linecast(lastTracerPositions[i], currentTracerPositions[i], out hitInfo, 0, QueryTriggerInteraction.Collide);
+					// if (Physics.Linecast(lastTracerPositions[i], currentTracerPositions[i], out hitInfo, -1, QueryTriggerInteraction.Collide))
 					if (Physics.Linecast(lastTracerPositions[i], currentTracerPositions[i], out hitInfo))
 					{
-						hitPart = hitInfo.transform.GetComponent<Damageable>();
+						hitPart = hitInfo.collider.transform.GetComponent<Damageable>();
+						// Debug.Break();
+						// Debug.Log(i + " : " + hitInfo.transform.name);
+						// Debug.Log(i + " : " + hitInfo.collider.transform.name);
 						if (hitPart)
 						{
+							// Debug.Log("hit part - " + hitPart);
 							if (!hitObject)
 							{
 								hitObject = hitPart.GetOwner();
@@ -90,6 +102,14 @@ public class PlayerCombat : MonoBehaviour
 								Instantiate(hitEffect, hitInfo.point, Quaternion.identity);
 
 								HitStutter();
+
+
+
+
+
+
+	
+								hitObject.GetComponent<Health>().TakeDamage(20f);
 							}
 						}
 					}
