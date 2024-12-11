@@ -17,8 +17,9 @@ public class MyPlayerLookAirTest : MonoBehaviour
 	[SerializeField]
 	private float sensY;
 
-	private Vector2 m_look;
+	public Vector2 m_look;
 	private Vector2 lookRotation;
+	private int m_look_last;
 
 	[SerializeField]
 	[Tooltip("Enables a large range of sensitivity values")]
@@ -36,6 +37,19 @@ public class MyPlayerLookAirTest : MonoBehaviour
 	public void OnLook(InputAction.CallbackContext context)
 	{
 		m_look = context.ReadValue<Vector2>();
+		if (m_look.x > 0)
+		{
+			m_look_last = 1;
+		}
+		else if (m_look.x < 0)
+		{
+			m_look_last = -1;
+		}
+	}
+
+	public int LastLookDirectionX()
+	{
+		return m_look_last;
 	}
 
 	void Start()

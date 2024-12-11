@@ -6,14 +6,14 @@ using UnityEngine.InputSystem;
 public class PlayerCombat : MonoBehaviour
 {
 	public Animator animator;
-	public bool mouseHeld = false;
+	public bool mouseHeldLeft = false;
 
 	public string attackSpeedParam = "AttackAnimationSpeed";
 
 	public List<Attack> attacks = new List<Attack>();
 	
-	public float timer = 0f;
-	public AttackPhase currentAttackPhase = AttackPhase.Idle;
+	public float phaseTimer = 0f;
+	public CombatPhase currentCombatPhase = CombatPhase.Idle;
 
 	public bool doAttack = false;
 
@@ -21,7 +21,6 @@ public class PlayerCombat : MonoBehaviour
 	public Attack currentAttack;
 
 	[Header("Tracers")]
-	public bool drawTracers = true;
 	public Transform tracerStart;
 	public Transform tracerEnd;
 	public float tracerFrequency; // Keep in mind fixedUpdate is 0.02
@@ -35,7 +34,7 @@ public class PlayerCombat : MonoBehaviour
 
 	private RaycastHit hitInfo;
 	public Damageable hitPart;
-	public GameObject hitObject;
+	// public GameObject hitObject;
 	public GameObject hitEffect;
 
 	// public bool hitStutter;
@@ -43,13 +42,25 @@ public class PlayerCombat : MonoBehaviour
 	public bool hitStuttering;
 	public float hitStutterTimer;
 	
+	[Header("Parry Test")]
+	public MyPlayerLookAirTest myPlayerLookAirTest;
+	public bool mouseHeldRight = false;
+	public bool doParry = false;
+	public List<GameObject> interactedObjects = new List<GameObject>();
+	public float parryWindupDuration;
+	public float parryReleaseDuration;
+	public float parryRecoveryDuration;
+	public AnimationClip idleAnimation;
+	public GameObject parryEffect;
+	public Collider parryCollider;
+	
 	public void OnAttack(InputAction.CallbackContext context)
 	{
-		if (!mouseHeld)
+		if (!mouseHeldLeft)
 		{
 			TryAttack();
 		}
-		mouseHeld = context.ReadValueAsButton();
+		mouseHeldLeft = context.ReadValueAsButton();
 	}
 
 	public void OnAttack(bool value) // For triggering from another script instead of InputAction
@@ -59,80 +70,68 @@ public class PlayerCombat : MonoBehaviour
 			TryAttack();
 		}
 	}
+
+	public void OnParry(InputAction.CallbackContext context)
+	{
+		if (!mouseHeldRight)
+		{
+			TryParry();
+		}
+		mouseHeldRight = context.ReadValueAsButton();
+	}
+
+	public bool IsParrying()
+	{
+		if (currentCombatPhase == CombatPhase.ParryWindup
+		    || currentCombatPhase == CombatPhase.ParryRelease)
+		{
+			return true;
+		}
+
+		return false;
+	}
 	
 	void Start()
 	{
 		UpdatePositionsList(currentTracerPositions);
+
+		if (parryCollider)
+		{
+			parryCollider.enabled = false;
+		}
 	}
 
 	void Update()
 	{
 		UpdateAttackPhase();
+		UpdateTracers();
 		
-		if (drawTracers && currentAttackPhase == AttackPhase.Release)
-		{
-			tracerTimer += Time.deltaTime;
-			if (tracerTimer >= tracerFrequency)
-			{
-				tracerTimer = 0f;
-				// lastPosition = currentPosition;
-				// currentPosition = tracerEnd.position;
-				// Debug.DrawLine(lastPosition, currentPosition, Color.red, 1f);
-				lastTracerPositions = new List<Vector3>(currentTracerPositions);
-				UpdatePositionsList(currentTracerPositions);
-				for (int i = 0; i < currentTracerPositions.Count; i++)
-				{
-					// Color col = Color.Lerp(Color.white, Color.red, (float)i) / currentTracerPositions.Count;
-					Debug.DrawLine(lastTracerPositions[i], currentTracerPositions[i], Color.red, tracerDuration);
-					
-					// if (Physics.Linecast(lastTracerPositions[i], currentTracerPositions[i], out hitInfo, -1, QueryTriggerInteraction.Collide))
-					if (Physics.Linecast(lastTracerPositions[i], currentTracerPositions[i], out hitInfo))
-					{
-						hitPart = hitInfo.collider.transform.GetComponent<Damageable>();
-						// Debug.Break();
-						// Debug.Log(i + " : " + hitInfo.transform.name);
-						// Debug.Log(i + " : " + hitInfo.collider.transform.name);
-						if (hitPart)
-						{
-							// Debug.Log("hit part - " + hitPart);
-							if (!hitObject)
-							{
-								hitObject = hitPart.GetOwner();
-								Debug.Log(hitObject.name + " - " + hitPart.GetPartName());
-								Instantiate(hitEffect, hitInfo.point, Quaternion.identity);
-
-								HitStutter();
-
-
-
-
-
-
-	
-								hitObject.GetComponent<Health>().TakeDamage(20f);
-							}
-						}
-					}
-				}
-			}
-		}
 	}
 
 	private void HitStutter()
 	{
 		hitStuttering = true;
 		hitStutterTimer = 0f;
-		timer -= hitStutterDuration;
+		phaseTimer -= hitStutterDuration;
 		animator.SetFloat(attackSpeedParam, 0f);
 	}
 	
 	private void TryAttack()
 	{
-		if (currentAttackPhase == AttackPhase.Idle
-		    || currentAttackPhase == AttackPhase.Release
-		    || currentAttackPhase == AttackPhase.Recovery)
+		if (currentCombatPhase == CombatPhase.Idle
+		    || currentCombatPhase == CombatPhase.Release
+		    || currentCombatPhase == CombatPhase.Recovery)
 		{
 			doAttack = true;
+		}
+	}
+
+	private void TryParry()
+	{
+		if (currentCombatPhase != CombatPhase.ParryWindup
+		    && currentCombatPhase != CombatPhase.ParryRelease)
+		{
+			doParry = true;
 		}
 	}
 
@@ -160,12 +159,71 @@ public class PlayerCombat : MonoBehaviour
 
 	private void UpdateAttackPhase()
 	{
-		if (currentAttackPhase != AttackPhase.Idle)
+		if (currentCombatPhase != CombatPhase.Idle)
 		{
-			timer += Time.deltaTime;
+			phaseTimer += Time.deltaTime;
 		}
 
-		if (currentAttackPhase == AttackPhase.Release)
+		if (doParry && (currentCombatPhase == CombatPhase.Idle || currentCombatPhase == CombatPhase.Windup ||
+		                currentCombatPhase == CombatPhase.Recovery))
+		{
+			currentCombatPhase = CombatPhase.ParryWindup;
+			phaseTimer = 0f;
+			doParry = false;
+
+			animator.SetFloat(attackSpeedParam, 0f);
+			if (myPlayerLookAirTest.LastLookDirectionX() > 0)
+			{
+				animator.CrossFadeInFixedTime("Combat Layer.Parry_Right", parryWindupDuration);
+			}
+			else
+			{
+				animator.CrossFadeInFixedTime("Combat Layer.Parry_Left", parryWindupDuration);
+			}
+			
+			parryCollider.enabled = true;
+			
+		}
+		else if (currentCombatPhase == CombatPhase.ParryWindup && phaseTimer >= parryWindupDuration)
+		{
+			currentCombatPhase = CombatPhase.ParryRelease;
+			phaseTimer = 0f;
+			
+			animator.SetFloat(attackSpeedParam, 1f / parryReleaseDuration);
+			
+			// parryCollider.enabled = true;
+		}
+		else if (currentCombatPhase == CombatPhase.ParryRelease && phaseTimer >= parryReleaseDuration)
+		{
+			currentCombatPhase = CombatPhase.ParryRecovery;
+			phaseTimer = 0f;
+			
+			animator.SetFloat(attackSpeedParam, 0f);
+			animator.CrossFadeInFixedTime("Combat Layer." + idleAnimation.name, parryReleaseDuration);
+			
+			parryCollider.enabled = false;
+		}
+		else if (currentCombatPhase == CombatPhase.ParryRecovery && phaseTimer >= parryRecoveryDuration)
+		{
+			currentCombatPhase = CombatPhase.Idle;
+			phaseTimer = 0f;
+			animator.SetFloat(attackSpeedParam, 1f);
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+
+		if (currentCombatPhase == CombatPhase.Release)
 		{
 			if (hitStuttering)
 			{
@@ -183,61 +241,133 @@ public class PlayerCombat : MonoBehaviour
 		// 	animator.SetFloat("AttackSpeed", -1f);
 		// }
 		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 
-		if (doAttack && (currentAttackPhase == AttackPhase.Idle || currentAttackPhase == AttackPhase.Recovery))
+		if (doAttack && (currentCombatPhase == CombatPhase.Idle || currentCombatPhase == CombatPhase.Recovery))
 		{
-			if (currentAttackPhase == AttackPhase.Recovery)
+			if (currentCombatPhase == CombatPhase.Recovery)
 			{
 				comboIndex = (comboIndex + 1) % attacks.Count;
 			}
 			SetAttackStats(comboIndex);
 			
 			// Debug.Log("Windup");
-			currentAttackPhase = AttackPhase.Windup;
+			currentCombatPhase = CombatPhase.Windup;
 			animator.SetFloat(attackSpeedParam, 0f);
 			animator.CrossFadeInFixedTime("Combat Layer." + currentAttack.animationClip.name, currentAttack.windupDuration);
-			timer = 0f;
+			phaseTimer = 0f;
 			doAttack = false;
 		}
-		else if (currentAttackPhase == AttackPhase.Windup && timer >= currentAttack.windupDuration)
+		else if (currentCombatPhase == CombatPhase.Windup && phaseTimer >= currentAttack.windupDuration)
 		{
 			// Debug.Log("Release");
-			currentAttackPhase = AttackPhase.Release;
+			currentCombatPhase = CombatPhase.Release;
 			animator.SetFloat(attackSpeedParam, 1f / currentAttack.releaseDuration);
-			timer = 0f;
+			phaseTimer = 0f;
 			
 			UpdatePositionsList(currentTracerPositions);
-			hitObject = null;
+			interactedObjects.Clear();
 		}
-		else if (currentAttackPhase == AttackPhase.Release && timer >= currentAttack.releaseDuration)
+		else if (currentCombatPhase == CombatPhase.Release && phaseTimer >= currentAttack.releaseDuration)
 		{
-			currentAttackPhase = AttackPhase.Recovery;
+			currentCombatPhase = CombatPhase.Recovery;
 			if (!doAttack)
 			{
 				// Debug.Log("Recovery");
 				animator.SetFloat(attackSpeedParam, 0f);
-				animator.CrossFadeInFixedTime("Combat Layer.Empty", currentAttack.recoveryDuration);
-				timer = 0f;
+				animator.CrossFadeInFixedTime("Combat Layer." + idleAnimation.name, currentAttack.recoveryDuration);
+				phaseTimer = 0f;
 			}
 		}
-		else if (currentAttackPhase == AttackPhase.Recovery && timer >= currentAttack.recoveryDuration)
+		else if (currentCombatPhase == CombatPhase.Recovery && phaseTimer >= currentAttack.recoveryDuration)
 		{
 			// Debug.Log("Idle");
-			currentAttackPhase = AttackPhase.Idle;
-			timer = 0f;
+			currentCombatPhase = CombatPhase.Idle;
+			phaseTimer = 0f;
 			
 			comboIndex = 0;
 			SetAttackStats(comboIndex);
+			
+			animator.SetFloat(attackSpeedParam, 1f);
+		}
+	}
+
+	private void UpdateTracers()
+	{
+		if (currentCombatPhase == CombatPhase.Release)
+		{
+			tracerTimer += Time.deltaTime;
+			if (tracerTimer >= tracerFrequency)
+			{
+				tracerTimer = 0f;
+				// lastPosition = currentPosition;
+				// currentPosition = tracerEnd.position;
+				// Debug.DrawLine(lastPosition, currentPosition, Color.red, 1f);
+				lastTracerPositions = new List<Vector3>(currentTracerPositions);
+				UpdatePositionsList(currentTracerPositions);
+				for (int i = 0; i < currentTracerPositions.Count; i++)
+				{
+					// Color col = Color.Lerp(Color.white, Color.red, (float)i) / currentTracerPositions.Count;
+					Debug.DrawLine(lastTracerPositions[i], currentTracerPositions[i], Color.red, tracerDuration);
+					
+					// if (Physics.Linecast(lastTracerPositions[i], currentTracerPositions[i], out hitInfo, -1, QueryTriggerInteraction.Collide))
+					if (Physics.Linecast(lastTracerPositions[i], currentTracerPositions[i], out hitInfo))
+					{
+						hitPart = hitInfo.collider.transform.GetComponent<Damageable>();
+						// Debug.Break();
+						// Debug.Log(i + " : " + hitInfo.transform.name);
+						// Debug.Log(i + " : " + hitInfo.collider.transform.name);
+						if (hitPart)
+						{
+							// Debug.Log("hit part - " + hitPart);
+							GameObject hitObject = hitPart.GetOwner();
+							if (!interactedObjects.Contains(hitObject) && hitObject != this.gameObject)
+							{
+								interactedObjects.Add(hitObject);
+								
+								
+								Debug.Log(hitObject.name + " - " + hitPart.GetPartName());
+
+								if (hitPart.IsParryCollider())
+								{
+									Instantiate(parryEffect, hitInfo.point, Quaternion.identity);
+								}
+								else if (hitObject.GetComponent<PlayerCombat>().IsParrying())
+								{
+									Instantiate(parryEffect, hitInfo.point, Quaternion.identity);
+								}
+								else
+								{
+									Instantiate(hitEffect, hitInfo.point, Quaternion.identity);
+									HitStutter();
+									hitObject.GetComponent<Health>().TakeDamage(20f);
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
 
-public enum AttackPhase
+public enum CombatPhase
 {
 	Idle,
 	Windup,
 	Release,
-	Recovery
+	Recovery,
+	ParryWindup,
+	ParryRelease,
+	ParryRecovery
 }
 
 [System.Serializable]

@@ -6,6 +6,7 @@ public class Damageable : MonoBehaviour
 {
     public GameObject owner;
     public string partName;
+    public bool parryCollider;
 
     public GameObject GetOwner()
     {
@@ -15,5 +16,10 @@ public class Damageable : MonoBehaviour
     public string GetPartName()
     {
         return partName;
+    }
+
+    public bool IsParryCollider()
+    {
+        return parryCollider;
     }
 }
