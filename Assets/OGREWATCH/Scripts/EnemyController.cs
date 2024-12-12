@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 public class EnemyController : MonoBehaviour
 {
-    public PlayerCombat myCombat;
+    public Combat combat;
     public GameObject target;
     public float aggroRange;
 
@@ -17,11 +17,11 @@ public class EnemyController : MonoBehaviour
         currentRange = Vector2.Distance(this.transform.position, target.transform.position);
         if (currentRange <= aggroRange)
         {
-            myCombat.OnAttack(true);
+            combat.OnAttack(true);
         }
         else
         {
-            myCombat.OnAttack(false);
+            combat.OnAttack(false);
         }
     }
 }

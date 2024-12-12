@@ -13,7 +13,7 @@ public class CrosshairController : MonoBehaviour
     {
         if (Physics.Raycast(myCamera.transform.position, myCamera.transform.forward, out hitInfo))
         {
-            if (hitInfo.transform.GetComponent<Damageable>())
+            if (hitInfo.collider.GetComponent<Damageable>())
             {
                 whiteCrosshair.SetActive(false);
                 orangeCrosshair.SetActive(true);

@@ -17,6 +17,7 @@ public class MyPlayerMovement : MonoBehaviour
 	public MyPlayerStatus myPlayerStatus;
 	public Animator animator;
 	public CameraEffects cameraEffects;
+	public Combat combat;
 
 	[Header("Ground Movement")]
 	// public float maxGroundSpeed;
@@ -82,6 +83,8 @@ public class MyPlayerMovement : MonoBehaviour
 	public float forwardDiagonalSpeed;
 	public float backDiagonalSpeed;
 
+	public bool ability1Held;
+
 	public void OnMove(InputAction.CallbackContext context)
 	{
 		move = context.ReadValue<Vector2>();
@@ -94,7 +97,11 @@ public class MyPlayerMovement : MonoBehaviour
 
 	public void OnAbility1(InputAction.CallbackContext context)
 	{
-		Ability1();
+		if (!ability1Held)
+		{
+			Ability1();
+		}
+		ability1Held = context.ReadValueAsButton();
 	}
 
 	void Start()
@@ -466,6 +473,11 @@ public class MyPlayerMovement : MonoBehaviour
 		
 		
 		
-		cameraEffects.CameraShake();
+		// cameraEffects.CameraShake();
+		
+		
+		
+		
+		combat.SuccessfulParry(this.gameObject);
 	}
 }

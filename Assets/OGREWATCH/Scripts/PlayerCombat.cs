@@ -357,24 +357,26 @@ public class PlayerCombat : MonoBehaviour
 			}
 		}
 	}
+	
+	public enum CombatPhase
+	{
+		Idle,
+		Windup,
+		Release,
+		Recovery,
+		ParryWindup,
+		ParryRelease,
+		ParryRecovery
+	}
+
+	[System.Serializable]
+	public class Attack
+	{
+		public AnimationClip animationClip;
+		public float windupDuration;
+		public float releaseDuration;
+		public float recoveryDuration;
+	}
 }
 
-public enum CombatPhase
-{
-	Idle,
-	Windup,
-	Release,
-	Recovery,
-	ParryWindup,
-	ParryRelease,
-	ParryRecovery
-}
 
-[System.Serializable]
-public class Attack
-{
-	public AnimationClip animationClip;
-	public float windupDuration;
-	public float releaseDuration;
-	public float recoveryDuration;
-}
